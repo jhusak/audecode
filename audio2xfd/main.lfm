@@ -1,0 +1,184 @@
+object MainForm: TMainForm
+  Left = 324
+  Height = 550
+  Top = 130
+  Width = 681
+  Align = alLeft
+  Caption = 'AuDecoder v1.0'
+  ClientHeight = 550
+  ClientWidth = 681
+  Constraints.MinHeight = 550
+  Constraints.MinWidth = 662
+  OnCreate = FormCreate
+  ParentBiDiMode = False
+  Position = poDesktopCenter
+  LCLVersion = '0.9.30.4'
+  object Btn_OpenWav: TButton
+    Left = 24
+    Height = 32
+    Top = 168
+    Width = 216
+    Caption = 'Open WAV file...'
+    OnClick = Btn_OpenWavClick
+    TabOrder = 0
+  end
+  object Btn_SaveXfd: TButton
+    Left = 24
+    Height = 32
+    Top = 208
+    Width = 216
+    Caption = 'Save Atari XFD disk image'
+    OnClick = Btn_SaveXfdClick
+    TabOrder = 1
+  end
+  object LogWindow: TMemo
+    Left = 264
+    Height = 509
+    Top = 32
+    Width = 409
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    Constraints.MinHeight = 437
+    Constraints.MinWidth = 390
+    ReadOnly = True
+    ScrollBars = ssVertical
+    TabOrder = 2
+  end
+  object LogWindowLabel: TLabel
+    Left = 264
+    Height = 17
+    Top = 12
+    Width = 28
+    Caption = 'Log:'
+    ParentColor = False
+  end
+  object InfoTitle: TLabel
+    Left = 64
+    Height = 23
+    Top = 8
+    Width = 148
+    Alignment = taCenter
+    Caption = 'AuDecoder v1.0'
+    Font.Height = 19
+    ParentColor = False
+    ParentFont = False
+  end
+  object InfoTitle1: TLabel
+    Left = 64
+    Height = 17
+    Top = 72
+    Width = 131
+    Align = alCustom
+    Alignment = taCenter
+    Caption = 'Author: Jakub Husak'
+    ParentColor = False
+  end
+  object Memo1: TMemo
+    Left = 8
+    Height = 248
+    Top = 293
+    Width = 248
+    Alignment = taCenter
+    BorderStyle = bsNone
+    Lines.Strings = (
+      'This little application lets you decode'
+      'files made by little basic disk2snd.bas'
+      'program (included in the package, you'
+      'may also press the button above).'
+      'If you encouter problems, you may'
+      'decode two different audio'
+      'presentations of the disk until all'
+      'sectors are well decoded.'
+      'The WAV file may be in any format of'
+      'either 8 or 16 bit resolution, little or'
+      'big endian, mono or stereo.'
+      'Only WAV file format supported.'
+      'Use great tool Audacity (multiplatform)'
+      'to convert to WAV.'
+      'Enjoy!'
+    )
+    ReadOnly = True
+    TabOrder = 3
+  end
+  object InfoTitle2: TLabel
+    Left = 72
+    Height = 17
+    Top = 96
+    Width = 119
+    Align = alCustom
+    Alignment = taCenter
+    Caption = 'Freeware. 07.2012'
+    ParentColor = False
+  end
+  object InfoTitle3: TLabel
+    Left = 64
+    Height = 17
+    Top = 136
+    Width = 136
+    Alignment = taCenter
+    Caption = 'Written in FreePascal.'
+    ParentColor = False
+  end
+  object Btn_ClearLog: TButton
+    Left = 488
+    Height = 20
+    Top = 4
+    Width = 88
+    Anchors = [akTop, akRight]
+    Caption = 'Clear Log'
+    Font.Height = 2
+    OnClick = Btn_ClearLogClick
+    ParentFont = False
+    TabOrder = 4
+  end
+  object Btn_SaveAtr: TButton
+    Left = 24
+    Height = 32
+    Top = 248
+    Width = 216
+    Caption = 'Save Atari ATR disk image'
+    OnClick = Btn_SaveAtrClick
+    TabOrder = 5
+  end
+  object Btn_ShowDisk2AudBas: TButton
+    Left = 368
+    Height = 20
+    Top = 4
+    Width = 112
+    Anchors = [akTop, akRight]
+    Caption = 'disk2snd.bas'
+    Font.Height = 2
+    OnClick = Btn_ShowDisk2AudBasClick
+    ParentFont = False
+    TabOrder = 6
+  end
+  object Btn_ResetAll: TButton
+    Left = 585
+    Height = 20
+    Top = 4
+    Width = 88
+    Anchors = [akTop, akRight]
+    Caption = 'Reset All'
+    OnClick = Btn_ResetAllClick
+    TabOrder = 7
+  end
+  object InfoTitle4: TLabel
+    Left = 8
+    Height = 19
+    Top = 40
+    Width = 249
+    Alignment = taCenter
+    Caption = 'Atari Snd to Disk Image Converter'
+    Font.Height = 15
+    ParentColor = False
+    ParentFont = False
+  end
+  object OpenWavDialog: TOpenDialog
+    InitialDir = '/Users/qba/devel/disktoatrcopier'
+    left = 8
+    top = 8
+  end
+  object SaveXfdDialog: TSaveDialog
+    left = 16
+    top = 72
+  end
+end
