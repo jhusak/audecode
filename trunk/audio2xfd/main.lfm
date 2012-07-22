@@ -1,7 +1,7 @@
 object MainForm: TMainForm
   Left = 324
   Height = 550
-  Top = 130
+  Top = 128
   Width = 681
   Align = alLeft
   Caption = 'AuDecoder v1.0'
@@ -52,23 +52,25 @@ object MainForm: TMainForm
     ParentColor = False
   end
   object InfoTitle: TLabel
-    Left = 64
+    Left = 8
     Height = 23
     Top = 8
-    Width = 148
+    Width = 248
     Alignment = taCenter
+    AutoSize = False
     Caption = 'AuDecoder v1.0'
     Font.Height = 19
     ParentColor = False
     ParentFont = False
   end
   object InfoTitle1: TLabel
-    Left = 64
+    Left = 8
     Height = 17
     Top = 72
-    Width = 131
+    Width = 249
     Align = alCustom
     Alignment = taCenter
+    AutoSize = False
     Caption = 'Author: Jakub Husak'
     ParentColor = False
   end
@@ -79,6 +81,7 @@ object MainForm: TMainForm
     Width = 248
     Alignment = taCenter
     BorderStyle = bsNone
+    Color = clForm
     Lines.Strings = (
       'This little application lets you decode'
       'files made by little basic disk2snd.bas'
@@ -100,21 +103,23 @@ object MainForm: TMainForm
     TabOrder = 3
   end
   object InfoTitle2: TLabel
-    Left = 72
+    Left = 8
     Height = 17
     Top = 96
-    Width = 119
+    Width = 249
     Align = alCustom
     Alignment = taCenter
+    AutoSize = False
     Caption = 'Freeware. 07.2012'
     ParentColor = False
   end
   object InfoTitle3: TLabel
-    Left = 64
+    Left = 8
     Height = 17
     Top = 136
-    Width = 136
+    Width = 248
     Alignment = taCenter
+    AutoSize = False
     Caption = 'Written in FreePascal.'
     ParentColor = False
   end
@@ -125,7 +130,6 @@ object MainForm: TMainForm
     Width = 88
     Anchors = [akTop, akRight]
     Caption = 'Clear Log'
-    Font.Height = 2
     OnClick = Btn_ClearLogClick
     ParentFont = False
     TabOrder = 4
@@ -146,7 +150,6 @@ object MainForm: TMainForm
     Width = 112
     Anchors = [akTop, akRight]
     Caption = 'disk2snd.bas'
-    Font.Height = 2
     OnClick = Btn_ShowDisk2AudBasClick
     ParentFont = False
     TabOrder = 6
@@ -167,6 +170,7 @@ object MainForm: TMainForm
     Top = 40
     Width = 249
     Alignment = taCenter
+    AutoSize = False
     Caption = 'Atari Snd to Disk Image Converter'
     Font.Height = 15
     ParentColor = False
