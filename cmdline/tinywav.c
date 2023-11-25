@@ -94,6 +94,8 @@ int tinywav_open_read(TinyWav *tw, const char *path, TinyWavChannelFormat chanFm
 
 	if (tw->h.BitsPerSample == 32 && tw->h.AudioFormat == 3) {
 		tw->sampFmt = TW_FLOAT32; // file has 32-bit IEEE float samples
+	} else if (tw->h.BitsPerSample == 8 && tw->h.AudioFormat == 1) {
+		tw->sampFmt = TW_UINT8; // file has 8-bit int samples
 	} else if (tw->h.BitsPerSample == 16 && tw->h.AudioFormat == 1) {
 		tw->sampFmt = TW_INT16; // file has 16-bit int samples
 	} else {
@@ -109,6 +111,41 @@ int tinywav_open_read(TinyWav *tw, const char *path, TinyWavChannelFormat chanFm
 
 int tinywav_read_f(TinyWav *tw, void *data, int len) {
 	switch (tw->sampFmt) {
+		case TW_UINT8: {
+				      uint8_t *interleaved_data = (uint8_t *) malloc(tw->numChannels*len*sizeof(uint8_t));
+				      size_t samples_read = fread(interleaved_data, sizeof(uint8_t), tw->numChannels*len, tw->f);
+				      int valid_len = (int) samples_read / tw->numChannels;
+				      switch (tw->chanFmt) {
+					      case TW_INTERLEAVED: { // channel buffer is interleaved e.g. [LRLRLRLR]
+									   for (int pos = 0; pos < tw->numChannels * valid_len; pos++) {
+										   ((float *) data)[pos] = ((float) interleaved_data[pos]-INT8_MAX) / INT8_MAX;
+									   }
+									   free(interleaved_data);
+									   return valid_len;
+								   }
+					      case TW_INLINE: { // channel buffer is inlined e.g. [LLLLRRRR]
+								      for (int i = 0, pos = 0; i < tw->numChannels; i++) {
+									      for (int j = i; j < valid_len * tw->numChannels; j += tw->numChannels, ++pos) {
+										      ((float *) data)[pos] = ((float) interleaved_data[j]-INT8_MAX) / INT8_MAX;
+									      }
+								      }
+								      free(interleaved_data);
+								      return valid_len;
+							      }
+					      case TW_SPLIT: { // channel buffer is split e.g. [[LLLL],[RRRR]]
+								     for (int i = 0, pos = 0; i < tw->numChannels; i++) {
+									     for (int j = 0; j < valid_len; j++, ++pos) {
+										     ((float **) data)[i][j] = ((float) interleaved_data[j*tw->numChannels + i]-INT8_MAX) / INT8_MAX;
+									     }
+								     }
+								     free(interleaved_data);
+								     return valid_len;
+							     }
+					      default:
+							     free(interleaved_data);
+							     return 0;
+				      }
+			      }
 		case TW_INT16: {
 				       int16_t *interleaved_data = (int16_t *) malloc(tw->numChannels*len*sizeof(int16_t));
 				       size_t samples_read = fread(interleaved_data, sizeof(int16_t), tw->numChannels*len, tw->f);
@@ -118,7 +155,6 @@ int tinywav_read_f(TinyWav *tw, void *data, int len) {
 									    for (int pos = 0; pos < tw->numChannels * valid_len; pos++) {
 										    ((float *) data)[pos] = (float) interleaved_data[pos] / INT16_MAX;
 									    }
-									    //printf("Free 1\n");
 									    free(interleaved_data);
 									    return valid_len;
 								    }
@@ -128,7 +164,6 @@ int tinywav_read_f(TinyWav *tw, void *data, int len) {
 										       ((float *) data)[pos] = (float) interleaved_data[j] / INT16_MAX;
 									       }
 								       }
-									    //printf("Free 2\n");
 								       free(interleaved_data);
 								       return valid_len;
 							       }
@@ -138,7 +173,6 @@ int tinywav_read_f(TinyWav *tw, void *data, int len) {
 										      ((float **) data)[i][j] = (float) interleaved_data[j*tw->numChannels + i] / INT16_MAX;
 									      }
 								      }
-									    //printf("Free 3\n");
 								      free(interleaved_data);
 								      return valid_len;
 							      }

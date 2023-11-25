@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
+#include <math.h>
 
 #include "tinywav.h"
 
@@ -33,7 +34,7 @@ typedef enum {
 int analyze_buffer[200];
 uint8_t chksum;
 int MaxSector;
-uint8_t xfd_sector_data[256 * MAX_SECT_NUM];
+uint8_t xfd_sector_data[256 * MAX_SECT_NUM+16];
 SStatus xfd_sector_status[6000];
 int xfd_sector_length;
 TWaveState wave_state;
@@ -99,7 +100,7 @@ void AnalyzeLevels() {
 	wave_state = twst;
 	*/
 	wave_state.edge_threshold = val / 2;
-	wave_state.edge_threshold = 0.20;
+	wave_state.edge_threshold = 0.18;
 }
 
 int GetImpulseLength() {
@@ -138,22 +139,22 @@ int GetImpulseLength() {
 	return result;
 }
 
-int CalculateVolume() {
-	int i, val, sum;
+float CalculateVolume() {
+	int i;
+	float val, sum;
 	sum = 0;
 	i = 0;
 
 	val = GetNextSample();
 	while (val > -0xffff) {
-		sum += abs(val);
+		sum += fabsf(val);
 		i++;
 		if (sum > 0x60000000) {
 			break;
 		}
 		val = GetNextSample();
 	}
-	int result = sum / i;
-	return result;
+	return sum / i;
 }
 
 uint8_t single_sector[512];
@@ -205,18 +206,15 @@ int FindHeader() {
 	while (1) {
 		val = GetImpulseLength();
 
-		if (count++>4000) printf("VAL: %d\n",val);
 		if (val == 0) {
 			return result;
 		}
 		if (val >= 7 && val <= 10) {
 			cnt--;
-			//if (cnt<7) printf("VAL: %d CNT: %d\n",val,cnt);
 			if (cnt == 0) {
 				val = GetImpulseLength();
 				if (val <= 5) {
 					result = 1;
-					//printf("OK\n");
 					return result;
 				}
 				cnt = 8;
@@ -308,8 +306,7 @@ void process_file(char * fname) {
 	int GoodSectors, BadSectors, MissingSectors;
 	long int tmp_thr;
 	TWaveState tmp_ws;
-	int vol, vol2;
-	float* tmp_ptr;
+	float vol, vol2;
 	int init_threshold;
 	long int tbadsects;
 	int tail;
@@ -363,9 +360,12 @@ void process_file(char * fname) {
 	wave_state.curr_ptr = wav_buffer;
 	wave_state.start_ptr = wav_buffer;
 
+	wave_state.edge_threshold = CalculateVolume();
+	printf("Volume: %f\n",wave_state.edge_threshold);
+
+	// reinit
 	wave_state.curr_ptr = wave_state.start_ptr;
 	/*
-	vol = CalculateVolume();
 	vol2 = 0;
 	if (tw.numChannels == 2) {
 		wave_state.curr_ptr = wave_state.start_ptr + wave_state.next / 2;
@@ -379,12 +379,8 @@ void process_file(char * fname) {
 			printf("Using louder channel 1\n");
 		}
 	}
-	printf("Volume: %d\n",vol);
 	*/
 
-	tmp_ptr = wave_state.curr_ptr;
-	AnalyzeLevels();
-	wave_state.curr_ptr = tmp_ptr;
 	init_threshold = 0;
 	tail = 1;
 	BadSectors = 0;
@@ -399,6 +395,9 @@ void process_file(char * fname) {
 			sector_status = DecodeSector();
 			if (Eof) break;
 		} while (sector_status == ssEnd);
+
+
+	} while (!Eof);
 
 		for (i = 1; i <= MaxSector; i++) {
 			if (xfd_sector_status[i] == ssGood) {
@@ -416,30 +415,6 @@ void process_file(char * fname) {
 		printf("Missing Sectors : %d\n", MissingSectors);
 		printf("Max Sector num  : %d\n", MaxSector);
 
-		//wave_state = tmp_ws;
-		if (init_threshold) {
-			wave_state.edge_threshold = 0.016;
-			init_threshold = 0;
-		}
-		/*
-		if (tbadsects != BadSectors) {
-			if (tail == 0) {
-				wave_state.edge_threshold -= wave_state.edge_threshold / 4.0;
-			}
-			tail = 16;
-		} else {
-			if (tail > 0) {
-				tail--;
-			}
-		}
-		if (tail == 0) {
-			wave_state.edge_threshold += wave_state.edge_threshold / 2;
-		} else {
-			wave_state.edge_threshold += wave_state.edge_threshold / 32 + 1;
-		}
-		*/
-	} while (!Eof && ((BadSectors == 0) && (GoodSectors > 0) && (MissingSectors == 0)));
-
 	if ((BadSectors > 0) || (MissingSectors > 0)) {
 		printf("WARNING. The image is incomplete!\n");
 	}
@@ -455,7 +430,7 @@ void ResetAll() {
 }
 
 void SaveDiskImage(char* lfname, int header) {
-	int corr, res, headerlen, i;
+	int subtract, res, headerlen, i;
 	FILE* f;
 	f = fopen(lfname, "wb");
 	if (f == NULL) {
@@ -463,11 +438,12 @@ void SaveDiskImage(char* lfname, int header) {
 		return;
 	}
 	headerlen = 0;
-	corr = 0;
+	subtract = 0;
 	if (xfd_sector_length == 256) {
-		corr = 3 * 128;
+		subtract = 3 * 128;
 	}
 	if (header) {
+		// create room for header.
 		for (i = sizeof(xfd_sector_data) - 17; i >= 0; i--) {
 			xfd_sector_data[i + 16] = xfd_sector_data[i];
 		}
@@ -477,43 +453,34 @@ void SaveDiskImage(char* lfname, int header) {
 		}
 		xfd_sector_data[0] = 0x96;
 		xfd_sector_data[1] = 0x02;
-		xfd_sector_data[2] = ((MaxSector * xfd_sector_length - corr) / 16) & 0xff;
-		xfd_sector_data[3] = ((MaxSector * xfd_sector_length - corr) / 16) / 0x100;
+		xfd_sector_data[2] = ((MaxSector * xfd_sector_length - subtract) / 16) & 0xff;
+		xfd_sector_data[3] = ((MaxSector * xfd_sector_length - subtract) / 16) / 0x100;
 		xfd_sector_data[4] = xfd_sector_length & 0xff;
 		xfd_sector_data[5] = xfd_sector_length / 0x100;
 	}
-	res = fwrite(xfd_sector_data, MaxSector * xfd_sector_length - corr + headerlen, 1, f);
+	res = fwrite(xfd_sector_data, MaxSector * xfd_sector_length - subtract + headerlen, 1, f);
 	fclose(f);
-	if (MaxSector * xfd_sector_length - corr + headerlen == res) {
+	if (1 == res) {
 		printf("File saved.\n");
 	} else {
-		printf("File save failed. (saved %d bytes)\n", res);
+		printf("File save failed\n");
 	}
-	MaxSector = 0;
-	ResetAll();
+	//ResetAll();
 }
 
-void SaveAtr(char * fname) {
+void SaveFile(char * fname,int hdr, char * ext) {
 	int i;
 	i=strrchr(fname,'.')-fname;
 	if (i<1000){
 		strncpy(savefname, fname, i+1);
 		savefname[i+1] = '\0';
-		strcat(savefname, "atr");
-		SaveDiskImage(savefname, 1);
-		printf("saved: %s\n",savefname);
+		strcat(savefname, ext);
+		SaveDiskImage(savefname, hdr);
 	}
-}
+	else
+	{
+		printf("Filename error\n");
 
-void SaveXfd(char * fname) {
-	int i;
-	i=strrchr(fname,'.')-fname;
-	if (i<1000){
-		strncpy(savefname, fname, i+1);
-		savefname[i+1] = '\0';
-		strcat(savefname, "xfd");
-		SaveDiskImage(savefname, 0);
-		printf("saved: %s\n",savefname);
 	}
 }
 
@@ -557,29 +524,21 @@ void Btn_ShowDisk2AudBasClick() {
 	printf("%s", disk2snd);
 }
 
-/* / not needed
-void OutputLengths() {
-	int cnt = 0;
-	while (cnt < 10000) {
-		cnt++;
-		printf("%ld:%d\n", (wave_state.curr_ptr - wave_state.start_ptr) / 2, GetImpulseLength());
-	}
-}
-*/
-
 void usage(char * n){
 	printf("Usage: %s [params] <input_file.wav>\n",n);
-	printf("\nParams:\n"
+	printf("\niAuthor: Jakub Husak, 11.2023\n\nParams:\n"
 	"-s: show AtariBasic encoder source\n"
-	"-t: threshold (0.0-1.0), nostly works 0.2-0.4\n"
+	"-v: be verbose\n"
+	"-f: force write incomplete disk image\n"
+	"-t <val>: threshold (0.0-1.0), nostly works 0.2-0.4, default auto\n"
 	);
 
 }
 
 int main(int argc, char ** argv) {
 	process_file(argv[1]);
-	SaveAtr(argv[1]);
-	SaveXfd(argv[1]);
+	SaveFile(argv[1],1,"atr");
+	SaveFile(argv[1],0,"xfd");
 }
 
 

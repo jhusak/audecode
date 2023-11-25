@@ -53,6 +53,7 @@ typedef enum TinyWavChannelFormat {
 } TinyWavChannelFormat;
 
 typedef enum TinyWavSampleFormat {
+  TW_UINT8 = 1,  // two byte signed integer
   TW_INT16 = 2,  // two byte signed integer
   TW_FLOAT32 = 4 // four byte IEEE float
 } TinyWavSampleFormat;
