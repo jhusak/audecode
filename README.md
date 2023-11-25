@@ -18,7 +18,7 @@ How to use.
 I presume you have connected your atari to pc using audio cable? Ok. one cable needed:)
 And pressed "record" button in audio app before, right? (I prefer Audacity).
 
-Then run disk2snd and record those beeps to audio app, save the file as WAV, and load it in AuDecoder, which will reverse all the operation resulting in freshly made disk image at the PC side. Only 8/16 bits, mono/stereo WAV files  supported.
+Then run disk2snd and record those beeps to audio app, save the file as WAV, and load it in AuDecoder, which will reverse all the operation resulting in freshly made disk image at the PC side. Only 8/16 bits, mono/stereo WAV files  supported (command line version supports mono only for now).
 
 Tips:
 DD/SS disk takes 4.5 min of audio to encode.
