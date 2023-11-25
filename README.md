@@ -33,7 +33,7 @@ The signal does not have to be strong; the most important is that it is 10% volu
 Every data block (shshshsht) contains sector number, sector length and checksum, and of course sector data.
 The bitrate is 7800 (only ones) to 15600 (only zeroes) bits/sec. so in average there is 11 kbits (no start and stop bits), ca 1.3 kB/sec 
 
-Because I cannot get Lazarus working on my MacBooks, I have translated main.pas to audecode.c with help of AI, so conversion and testing took a few hours. The result sits in commandline catalog, simple run ./compile.sh and you get working binary.
+Because I cannot get Lazarus working on my MacBooks, I have translated main.pas to audecode.c with help of AI, so conversion and testing took a few hours. The result sits in cmdline catalog, simple run ./compile.sh and you get working binary.
 
 Happy copying!
 
