@@ -1,5 +1,4 @@
-/dr
-AuDecoder, v1.0
+# AuDecoder, v1.0
 ---------------
 
 How to copy an 8-bit Atari floppy disk to your pc-platform without any cables, etc?
