@@ -2,7 +2,7 @@
 AuDecoder, v1.0
 ---------------
 
-How to copy an Atari floppy disk to your pc-platform without any cables, etc?
+How to copy an 8-bit Atari floppy disk to your pc-platform without any cables, etc?
 You do have a disk drive, but no sio2pc, sio2sd, sdrive, sio2usb, etc, don't you?
 
 Just retype the basic program disk2snd.bas into atari powered without any keys pressed. You may boot to dos and save this program on the disk for latter use.
