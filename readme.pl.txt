@@ -30,6 +30,7 @@ Sygnał nie musi być silny, może stanowić 10% głośności lub więcej, nie p
 Każdy blok danych (szszszszt) zawiera numer sektora, długość sektora i sumę kontrolną, no i oczywiście dane.
 Prędkość przesyłu danych to 7800 (same jedynki) do 15600 (tylko zera) bitów na sekundę. Średnio daje to 11 kbitów (brak jest bitów startu i stopu), ok. 1,3 kB/s.
 
+Ponieważ nie mogę dojść do ładu z Lazarusem na moich macbookach (Intel i M1) - przetłumaczyłem main.pas na audecode.c, uruchomiłem i przetesotowałem przy pomocy AI w jeden wieczór:)
 
 Wesołego kopiowania i archiwizowania!
 
