@@ -43,6 +43,11 @@ char savefname[1024];
 FILE* wav;
 int Eof=0;
 
+int force_save=0;
+int verbose=0;
+float t_corr=0;
+int incomplete=0;
+
 float GetNextSample() {
 	//printf("getting sample: %ld: %f\n",wave_state.curr_ptr - wave_state.start_ptr,*(wave_state.curr_ptr));
 	float result = -0x10000;
@@ -69,38 +74,6 @@ float GetNextDiff() {
 	}
 	//printf("getting diff: %f\n",result);
 	return result;
-}
-
-void AnalyzeLevels() {
-	int i;
-	float val;
-	/*
-	TWaveState twst = wave_state;
-	for (i = 0; i <= 200; i++) {
-		analyze_buffer[i] = 0;
-	}
-	val = GetNextDiff();
-	while (val > -1.0 && val <=1.0) {
-		analyze_buffer[(int)(val*100)+100]++;
-		val = GetNextDiff();
-	}
-
-	i = 100;
-	val = i;
-
-	while (i > 104) {
-		if (val > -1.0 && val <=1.0) {
-			if (analyze_buffer[(int)(val*100)+100] <= analyze_buffer[i]) {
-				val = i;
-			}
-		}
-		i--;
-	}
-	printf("Max at:%f\n\n", val);
-	wave_state = twst;
-	*/
-	wave_state.edge_threshold = val / 2;
-	wave_state.edge_threshold = 0.18;
 }
 
 int GetImpulseLength() {
@@ -273,7 +246,8 @@ SStatus DecodeSector() {
 			CalcChecksum(sectorlength, 1);
 			if (chksum == single_sector[0]) {
 				strcat(strn, " CRC OK");
-				printf("%s\n", strn);
+				if (verbose)
+					printf("%s\n", strn);
 				if (sectornum < 4) {
 					sector_addr = 128 * (sectornum - 1);
 					outSector(&single_sector[1],128); 
@@ -317,7 +291,7 @@ void process_file(char * fname) {
 	TinyWav tw;
 	tinywav_open_read(&tw,fname, TW_INLINE);
 	if (tw.numChannels != NUM_CHANNELS || tw.h.SampleRate != SAMPLE_RATE) {
-		printf("Supplied test wav has wrong format - should be [%d]channels, fs=[%d]\n", NUM_CHANNELS, SAMPLE_RATE);
+		fprintf(stderr,"Supplied test wav has wrong format - should be [%d]channels, fs=[%d]\n", NUM_CHANNELS, SAMPLE_RATE);
 		exit(-1);
 	}
 
@@ -335,22 +309,32 @@ void process_file(char * fname) {
 	wave_state.framelength =tw.numFramesInHeader;
 	wave_state.prev_val = 0;
 	wave_state.curr_val = 0;
-	printf("length byt : %d\n", wav_bytelength);
-	printf("channels   : %d\n", tw.numChannels);
-	printf("frequency  : %d\n", tw.h.SampleRate);
-	printf("resolution : %d\n", wave_state.resol * 8);
-	printf("levels     : %d\n", wave_state.levels);
-	printf("signed     : %s\n", wave_state.ssigned > 0 ? "yes" : "no");
-	printf("big endian : %s\n", wave_state.endian > 0 ? "yes" : "no");
+	if (verbose) {
+		printf("length byt : %d\n", wav_bytelength);
+		printf("channels   : %d\n", tw.numChannels);
+		printf("frequency  : %d\n", tw.h.SampleRate);
+		printf("resolution : %d\n", wave_state.resol * 8);
+		printf("levels     : %d\n", wave_state.levels);
+		printf("signed     : %s\n", wave_state.ssigned > 0 ? "yes" : "no");
+		printf("big endian : %s\n", wave_state.endian > 0 ? "yes" : "no");
+	}
 
 	int totalNumSamples = tw.numFramesInHeader;
 	assert((wav_buffer=malloc(totalNumSamples*tw.numChannels*sizeof(float)))>0 && "Could not alloc memory");
 
-	printf("Size of buffer: %d\n",totalNumSamples*tw.numChannels*wave_state.resol);
-	printf("Samples: %d\n",totalNumSamples);
+	if (verbose) {
+		printf("Size of buffer: %d\n",totalNumSamples*tw.numChannels*wave_state.resol);
+		printf("Samples: %d\n",totalNumSamples);
+	}
 
 	int samplesRead = tinywav_read_f(&tw, wav_buffer, totalNumSamples);
-	assert(samplesRead > 0 && " Could not read from file!");
+	if (samplesRead ==0)
+	{
+		if(verbose)
+			fprintf(stderr,"Could not read from file!\n");
+		exit(1);
+	}
+
 
 	/*
 	for (int i=0; i<256; i++){
@@ -362,8 +346,9 @@ void process_file(char * fname) {
 	wave_state.curr_ptr = wav_buffer;
 	wave_state.start_ptr = wav_buffer;
 
-	wave_state.edge_threshold = CalculateVolume();
-	printf("Volume: %f\n",wave_state.edge_threshold);
+	wave_state.edge_threshold = CalculateVolume()+t_corr;
+	if (verbose)
+		printf("Volume: %f\n",wave_state.edge_threshold);
 
 	// reinit
 	wave_state.curr_ptr = wave_state.start_ptr;
@@ -383,16 +368,15 @@ void process_file(char * fname) {
 	}
 	*/
 
-	init_threshold = 0;
 	tail = 1;
 	BadSectors = 0;
 	do {
-		//tmp_ws = wave_state;
 		GoodSectors = 0;
 		tbadsects = BadSectors;
 		BadSectors = 0;
 		MissingSectors = 0;
-		printf("Trying threshold...%f\n", wave_state.edge_threshold);
+		if (verbose)
+			printf("Trying threshold...%f\n", wave_state.edge_threshold);
 		do {
 			sector_status = DecodeSector();
 			if (Eof) break;
@@ -401,26 +385,32 @@ void process_file(char * fname) {
 
 	} while (!Eof);
 
-		for (i = 1; i <= MaxSector; i++) {
-			if (xfd_sector_status[i] == ssGood) {
-				GoodSectors++;
-			}
-			if (xfd_sector_status[i] == ssBad) {
-				BadSectors++;
-			}
-			if (xfd_sector_status[i] == ssEmpty) {
-				MissingSectors++;
-			}
+	for (i = 1; i <= MaxSector; i++) {
+		if (xfd_sector_status[i] == ssGood) {
+			GoodSectors++;
 		}
+		if (xfd_sector_status[i] == ssBad) {
+			BadSectors++;
+		}
+		if (xfd_sector_status[i] == ssEmpty) {
+			MissingSectors++;
+		}
+	}
+	if (verbose) {
 		printf("Good Sectors    : %d\n", GoodSectors);
 		printf("Bad Sectors     : %d\n", BadSectors);
 		printf("Missing Sectors : %d\n", MissingSectors);
 		printf("Max Sector num  : %d\n", MaxSector);
+	}
 
 	if ((BadSectors > 0) || (MissingSectors > 0)) {
-		printf("WARNING. The image is incomplete!\n");
+		if (verbose)
+			printf("WARNING. The image is incomplete!\n");
+		incomplete=1;
+
 	}
-	printf("Finished\n");
+	if (verbose)
+		printf("Finished\n");
 }
 
 void ResetAll() {
@@ -431,13 +421,14 @@ void ResetAll() {
 	MaxSector = 0;
 }
 
-void SaveDiskImage(char* lfname, int header) {
+int SaveDiskImage(char* lfname, int header) {
 	int subtract, res, headerlen, i;
 	FILE* f;
 	f = fopen(lfname, "wb");
 	if (f == NULL) {
-		printf("File save failed.\n");
-		return;
+		if (verbose)
+			printf("File save failed.\n");
+		return 1;
 	}
 	headerlen = 0;
 	subtract = 0;
@@ -463,30 +454,35 @@ void SaveDiskImage(char* lfname, int header) {
 	res = fwrite(xfd_sector_data, MaxSector * xfd_sector_length - subtract + headerlen, 1, f);
 	fclose(f);
 	if (1 == res) {
-		printf("File saved.\n");
+		if (verbose)
+			printf("File %s saved.\n",lfname);
 	} else {
-		printf("File save failed\n");
+		if (verbose)
+			printf("File %s save failed\n",lfname);
+		return 1;
 	}
-	//ResetAll();
+	return 0;
 }
 
-void SaveFile(char * fname,int hdr, char * ext) {
+int SaveFile(char * fname,int hdr, char * ext) {
 	int i;
 	i=strrchr(fname,'.')-fname;
 	if (i<1000){
 		strncpy(savefname, fname, i+1);
 		savefname[i+1] = '\0';
 		strcat(savefname, ext);
-		SaveDiskImage(savefname, hdr);
+		return SaveDiskImage(savefname, hdr);
 	}
 	else
 	{
-		printf("Filename error\n");
-
+		if (verbose)
+			printf("Filename error\n");
+		return 1;
 	}
+	return 0;
 }
 
-void Btn_ShowDisk2AudBasClick() {
+void ShowDisk2AudBas() {
 	const char* disk2snd = {
 		"0 . DISK2SND COPIER\n"
 		"1 . WITHOUT ANY CABLES.\n"
@@ -528,19 +524,58 @@ void Btn_ShowDisk2AudBasClick() {
 
 void usage(char * n){
 	printf("Usage: %s [params] <input_file.wav>\n",n);
-	printf("\niAuthor: Jakub Husak, 11.2023\n\nParams:\n"
+	printf("\nAuthor: Jakub Husak, 11.2023\n\nParams:\n"
 	"-s: show AtariBasic encoder source\n"
 	"-v: be verbose\n"
 	"-f: force write incomplete disk image\n"
 	"-t <val>: threshold (0.0-1.0), nostly works 0.2-0.4, default auto\n"
 	);
-
+	exit(64);
 }
 
 int main(int argc, char ** argv) {
-	process_file(argv[1]);
-	SaveFile(argv[1],1,"atr");
-	SaveFile(argv[1],0,"xfd");
+	char * filename=NULL;
+	if (argc==1) usage(argv[0]);
+	for (int i=1; i<argc; i++)
+	{
+		if (strncmp(argv[i],"-s",3)==0) {
+			ShowDisk2AudBas();
+			exit(0);
+		}
+		else if (strncmp(argv[i],"-f",3)==0) {
+			force_save=1;
+		}
+		else if (strncmp(argv[i],"-v",3)==0) {
+			verbose=1;
+		}
+		else if (strncmp(argv[i],"-t",3)==0) {
+			if (i<argc-1) {
+				t_corr=atof(argv[++i]);
+			}
+			else
+				usage(argv[0]);
+		}
+		else
+		{
+			filename=argv[i];
+		}
+	}
+
+	if (!filename) usage(argv[0]);
+
+	process_file(filename);
+
+	if (!incomplete || force_save) {
+		if (SaveFile(filename,1,"atr")!=0) fprintf(stderr,"ATR file write error\n");
+		if (SaveFile(filename,0,"xfd")!=0) fprintf(stderr,"XFD file write error\n");
+	}
+	else
+	{
+		if (verbose)
+			printf("Output not written. If you want to write it anyway, please add -f flag to command line.\n");
+		return(1);
+	}
+	return 0;
 }
 
 
