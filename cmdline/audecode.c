@@ -321,7 +321,9 @@ void process_file(char * fname) {
 		exit(-1);
 	}
 
-	wave_state.resol = (tw.h.Format & 0x1f) / 8;
+	wave_state.resol = (tw.h.BitsPerSample & 0x1f) / 8;
+	if (wave_state.resol==1)
+
 	wave_state.levels = 256;
 	if (wave_state.resol == 2) {
 		wave_state.levels *= 256;
@@ -336,8 +338,8 @@ void process_file(char * fname) {
 	printf("length byt : %d\n", wav_bytelength);
 	printf("channels   : %d\n", tw.numChannels);
 	printf("frequency  : %d\n", tw.h.SampleRate);
-	printf("SampFmt  : %d\n", tw.sampFmt);
 	printf("resolution : %d\n", wave_state.resol * 8);
+	printf("levels     : %d\n", wave_state.levels);
 	printf("signed     : %s\n", wave_state.ssigned > 0 ? "yes" : "no");
 	printf("big endian : %s\n", wave_state.endian > 0 ? "yes" : "no");
 
